@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poxel.io | Pro FPS Leaderboard</title>
+    <style>
+        :root {
+            --bg: #0b0f19; --card: #161b2c; --accent: #38bdf8;
+            --immortal: #ff4655; --veteran: #fbbf24; --elite: #f97316;
+            --sapphire: #3b82f6; --silver: #94a3b8; --newbie: #4ade80;
+        }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1150px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--card); padding-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .stat-card h4 { margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; }
+        .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; }
+
+        .filter-bar { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; border: 1px solid #2d3748; }
+        
+        .board-wrapper { background: var(--card); border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1e293b; padding: 15px; text-align: left; font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+        td { padding: 15px; border-bottom: 1px solid #2d3748; }
+        
+        .rank-num { font-weight: bold; color: var(--accent); width: 40px; }
+        .clan-tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 8px; }
+        .gun-badge { background: #334155; color: #e2e8f0; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+
+        .btn { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-primary { background: var(--accent); color: #0b0f19; }
+        .btn-view { background: #334155; color: white; padding: 5px 10px; font-size: 11px; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 100; padding: 20px; }
+        .modal-content { background: var(--card); padding: 30px; border-radius: 15px; width: 100%; max-width: 500px; border: 1px solid #334155; }
+        
+        /* Stats Breakdown Grid */
+        .stats-display-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .stat-item { background: #0b0f19; padding: 10px; border-radius: 8px; border: 1px solid #2d3748; display: flex; justify-content: space-between; }
+        .stat-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; }
+        .stat-value { color: var(--accent); font-weight: bold; }
+
+        input, select { width: 100%; background: #0b0f19; border: 1px solid #334155; color: white; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>POXEL.IO <span style="color:var(--accent)">TIERS</span></h1>
+        <div id="role-badge" style="background:#1e293b; padding:8px 15px; border-radius:20px; font-size:12px;">Role: User</div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><h4>Total Ranked</h4><p id="total-players">0</p></div>
+        <div class="stat-card" style="border-color:var(--immortal)"><h4>System</h4><p>Live v2.3</p></div>
+        <div class="stat-card" style="border-color:var(--accent)"><h4>Class Data</h4><p>Enabled</p></div>
+    </div>
+
+    <div class="filter-bar">
+        <select id="class-filter" onchange="currentPage=1; render();">
+            <option value="all">All Gun Classes</option>
+            <option value="patriot">Patriot</option>
+            <option value="bullseye">Bullseye</option>
+            <option value="cowboy">Cowboy</option>
+            <option value="terrorist">Terrorist</option>
+            <option value="captian">Captian</option>
+            <option value="blitzer">Blitzer</option>
+            <option value="jason">Jason</option>
+            <option value="flashman">Flashman</option>
+            <option value="hunter">Hunter</option>
+            <option value="splatter">Splatter</option>
+        </select>
+    </div>
+
+    <div id="admin-area" style="display:none; margin-bottom: 20px;">
+        <button class="btn btn-primary" onclick="showModal('adminModal')">+ Add New Entry</button>
+    </div>
+
+    <div class="board-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Player</th>
+                    <th>Gun Class</th>
+                    <th>Rank</th>
+                    <th>Rating</th>
+                    <th>Details</th>
+                    <th id="admin-head"></th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<div id="viewModal" class="modal">
+    <div class="modal-content">
+        <h2 id="view-name" style="margin:0; color:var(--accent)">Player Stats</h2>
+        <p id="view-kit" style="font-size:12px; color:#94a3b8; text-transform:uppercase;"></p>
+        <div class="stats-display-grid" id="stats-view-content"></div>
+        <button class="btn" style="width:100%; background:#334155; color:white;" onclick="hideModal('viewModal')">Close</button>
+    </div>
+</div>
+
+<div id="adminModal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title">Edit Player</h2>
+        <input type="text" id="p-name" placeholder="Name">
+        <select id="p-gun">
+            <option value="patriot">Patriot</option>
+            <option value="bullseye">Bullseye</option>
+            <option value="cowboy">Cowboy</option>
+            <option value="terrorist">Terrorist</option>
+            <option value="captian">Captian</option>
+            <option value="blitzer">Blitzer</option>
+            <option value="jason">Jason</option>
+            <option value="flashman">Flashman</option>
+            <option value="hunter">Hunter</option>
+            <option value="splatter">Splatter</option>
+        </select>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+            <input type="number" class="stat-in" data-cat="aim" placeholder="Aim (1-100)">
+            <input type="number" class="stat-in" data-cat="movement" placeholder="Movement">
+            <input type="number" class="stat-in" data-cat="shooting" placeholder="Shooting">
+            <input type="number" class="stat-in" data-cat="gamesense" placeholder="Game Sense">
+            <input type="number" class="stat-in" data-cat="reaction" placeholder="Reaction">
+            <input type="number" class="stat-in" data-cat="pos" placeholder="Positioning">
+            <input type="number" class="stat-in" data-cat="fire" placeholder="Fire Rate">
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="saveEntry()">Save</button>
+        <button class="btn" style="width:100%; margin-top:5px;" onclick="hideModal('adminModal')">Cancel</button>
+    </div>
+</div>
+
+<script>
+    const key = new URLSearchParams(window.location.search).get('key');
+    let role = (key === 'poxeladmin77') ? 'admin' : (key === 'tester99' ? 'tester' : 'user');
+    
+    let players = [
+        {name: "Zoro_FPS", gunClass: "patriot", stats: {aim: 95, movement: 88, shooting: 92, gamesense: 90, reaction: 94, pos: 85, fire: 90}},
+        {name: "Pranshu", gunClass: "captian", stats: {aim: 100, movement: 100, shooting: 100, gamesense: 100, reaction: 100, pos: 100, fire: 100}}
+    ];
+
+    let currentPage = 1, itemsPerPage = 10, editingIdx = null;
+
+    function calculateAvg(p) {
+        const v = Object.values(p.stats);
+        return v.reduce((a, b) => a + b, 0) / v.length;
+    }
+
+    function getTier(avg) {
+        if (avg >= 90) return {n: "Immortal", c: "var(--immortal)"};
+        if (avg >= 80) return {n: "Veteran", c: "var(--veteran)"};
+        if (avg >= 70) return {n: "Elite", c: "var(--elite)"};
+        if (avg >= 60) return {n: "Sapphire", c: "var(--sapphire)"};
+        return {n: "Newbie", c: "var(--newbie)"};
+    }
+
+    function render() {
+        const body = document.getElementById('leaderboard-body');
+        const filter = document.getElementById('class-filter').value;
+        document.getElementById('role-badge').innerText = `Role: ${role}`;
+        if(role !== 'user') document.getElementById('admin-area').style.display = 'block';
+
+        let filtered = (filter === 'all') ? players : players.filter(p => p.gunClass === filter);
+        filtered.sort((a,b) => calculateAvg(b) - calculateAvg(a));
+        document.getElementById('total-players').innerText = filtered.length;
+
+        const pageItems = filtered.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage);
+        body.innerHTML = '';
+
+        pageItems.forEach((p, i) => {
+            const avg = calculateAvg(p);
+            const tier = getTier(avg);
+            const globalIdx = players.indexOf(p);
+            
+            let adminBtns = role === 'admin' ? `<td><button onclick="editEntry(${globalIdx})" style="background:#fbbf24; border:none; padding:5px;">Edit</button></td>` : '';
+
+            body.innerHTML += `
+                <tr>
+                    <td class="rank-num">#${(currentPage-1)*itemsPerPage + i + 1}</td>
+                    <td>${p.name}</td>
+                    <td><span class="gun-badge">${p.gunClass}</span></td>
+                    <td style="color:${tier.c}; font-weight:bold;">${tier.n}</td>
+                    <td style="color:var(--accent); font-weight:bold;">${avg.toFixed(1)}</td>
+                    <td><button class="btn btn-view" onclick="viewStats(${globalIdx})">View Stats</button></td>
+                    ${adminBtns}
+                </tr>`;
+        });
+    }
+
+    function viewStats(idx) {
+        const p = players[idx];
+        document.getElementById('view-name').innerText = p.name;
+        document.getElementById('view-kit').innerText = `Class: ${p.gunClass}`;
+        const container = document.getElementById('stats-view-content');
+        container.innerHTML = '';
+        
+        for (const [key, val] of Object.entries(p.stats)) {
+            container.innerHTML += `
+                <div class="stat-item">
+                    <span class="stat-label">${key}</span>
+                    <span class="stat-value">${(val/10).toFixed(1)}/10</span>
+                </div>`;
+        }
+        showModal('viewModal');
+    }
+
+    function editEntry(idx) {
+        editingIdx = idx;
+        const p = players[idx];
+        document.getElementById('p-name').value = p.name;
+        document.getElementById('p-gun').value = p.gunClass;
+        document.querySelectorAll('.stat-in').forEach(i => i.value = p.stats[i.dataset.cat]);
+        showModal('adminModal');
+    }
+
+    function saveEntry() {
+        let s = {};
+        document.querySelectorAll('.stat-in').forEach(i => s[i.dataset.cat] = parseInt(i.value) || 0);
+        const data = { name: document.getElementById('p-name').value, gunClass: document.getElementById('p-gun').value, stats: s };
+        if(editingIdx !== null) players[editingIdx] = data; else players.push(data);
+        hideModal('adminModal'); render();
+    }
+
+    function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function hideModal(id) { document.getElementById(id).style.display = 'none'; editingIdx = null; }
+
+    render();
+</script>
+</body>
+</html>
+
